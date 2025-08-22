@@ -20,14 +20,13 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install dependencies
+    - name: Prepare deployment package
       run: |
-        cd backend
-        pip install -r requirements.txt
+        mkdir deploy
+        cp -r backend/app deploy/app
+        cp backend/requirements.txt deploy/
 
-    - name: Zip backend folder
-      run: |
-        cd backend
+        cd deploy
         zip -r ../app.zip .
 
     - name: Deploy to Azure
