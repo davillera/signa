@@ -3,7 +3,7 @@ name: Deploy FastAPI Backend to Azure
 on:
   push:
     paths:
-      - 'app/**'
+      - 'backend/**'
     branches:
       - main
 
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
+    - name: Checkout code
       uses: actions/checkout@v3
 
     - name: Set up Python
@@ -22,11 +22,13 @@ jobs:
 
     - name: Install dependencies
       run: |
+        cd backend
         pip install -r requirements.txt
 
-    - name: Zip app folder for deployment
+    - name: Zip backend folder
       run: |
-        zip -r app.zip app requirements.txt
+        cd backend
+        zip -r ../app.zip .
 
     - name: Deploy to Azure
       uses: azure/webapps-deploy@v2
