@@ -25,7 +25,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router.router)
     app.include_router(brands_router.router)
 
-    @app.get("/healthz")
+    @app.get("/health")
     def health():
         return {"status": "ok"}
 
