@@ -15,7 +15,11 @@ type Brand = {
 	id: string;
 };
 
-export default function BrandList({ brands }: { brands: Brand[] }) {
+export default function BrandList(
+	{brands, onChanged}: {
+	brands: Brand[];
+	onChanged?: any ;
+}) {
 	const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
 	const [deletingBrand, setDeletingBrand] = useState<Brand | null>(null);
 
@@ -41,7 +45,9 @@ export default function BrandList({ brands }: { brands: Brand[] }) {
 							</div>
 						)}
 
-						<h2 className="text-xl font-semibold text-gray-800 mb-1">{brand.brand_name}</h2>
+						<h2 className="text-xl font-semibold text-gray-800 mb-1">
+							{brand.brand_name}
+						</h2>
 						<p className="text-sm text-gray-600">Dueño: {brand.full_name}</p>
 						<p className="text-sm text-gray-600">Email: {brand.email}</p>
 						<p className="text-sm text-gray-600">Celular: {brand.phone_number}</p>
@@ -64,11 +70,12 @@ export default function BrandList({ brands }: { brands: Brand[] }) {
 					</div>
 				))}
 			</div>
+
 			{editingBrand && (
 				<EditBrandModal
 					brand={editingBrand}
 					onClose={() => setEditingBrand(null)}
-					onSuccess={refreshBrands} // ⚠️ función para recargar
+					onSuccess={onChanged}
 				/>
 			)}
 
@@ -76,7 +83,7 @@ export default function BrandList({ brands }: { brands: Brand[] }) {
 				<DeleteBrandModal
 					brand={deletingBrand}
 					onClose={() => setDeletingBrand(null)}
-					onSuccess={refreshBrands}
+					onSuccess={onChanged}
 				/>
 			)}
 		</>
