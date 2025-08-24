@@ -51,8 +51,7 @@ export default function BrandsPage() {
 					+ Nueva Marca
 				</button>
 			</div>
-
-			<BrandList brands={brands} refreshBrands={refreshBrands} />
+			<BrandList brands={brands} onChanged={refreshBrands} />
 
 			{showCreateModal && (
 				<CreateBrandModal
