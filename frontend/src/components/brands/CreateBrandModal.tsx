@@ -2,153 +2,176 @@
 
 import { useRef, useState } from 'react';
 import { createBrand } from '@/services/brandService';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 
-type Props = {
-	onClose: () => void;
-	onSuccess?: () => void;
-};
+type Props = { onClose: () => void; onSuccess?: () => void };
 
-type FormState = {
-	full_name: string;
-	email: string;
-	phone_number: string;
-	brand_name: string;
-	owner_cedula: string;
-};
+// Esquema de validación
+const schema = z.object({
+	brand_name: z.string().trim().min(2, 'Ingresa el nombre de la marca'),
+	full_name: z.string().trim().min(2, 'Ingresa el nombre del dueño'),
+	email: z.string().trim().email('Correo no válido'),
+	phone_number: z
+		.string()
+		.trim()
+		.regex(/^\+?\d{7,10}$/, 'Teléfono no válido (7–10 dígitos, opcional +)'),
+	owner_cedula: z
+		.string()
+		.trim()
+		.regex(/^\d{6,15}$/, 'Cédula no válida (solo dígitos)'),
+});
 
-const FIELDS: { name: keyof FormState; label: string; type?: string; autoComplete?: string; placeholder?: string }[] = [
+type FormValues = z.infer<typeof schema>;
+
+const FIELDS: {
+	name: keyof FormValues;
+	label: string;
+	type?: string;
+	autoComplete?: string;
+	placeholder?: string;
+}[] = [
 	{ name: 'brand_name', label: 'Nombre de la marca', placeholder: 'Ej: ACME' },
 	{ name: 'full_name', label: 'Nombre del dueño', placeholder: 'Ej: Daniel Andrés' },
-	{ name: 'email', label: 'Correo electrónico', type: 'email', autoComplete: 'email', placeholder: 'correo@dominio.com' },
-	{ name: 'phone_number', label: 'Número de teléfono', type: 'tel', autoComplete: 'tel', placeholder: 'Ej: 3000000000' },
+	{
+		name: 'email',
+		label: 'Correo electrónico',
+		type: 'email',
+		autoComplete: 'email',
+		placeholder: 'correo@dominio.com',
+	},
+	{
+		name: 'phone_number',
+		label: 'Número de teléfono',
+		type: 'tel',
+		autoComplete: 'tel',
+		placeholder: 'Ej: +573000000000',
+	},
 	{ name: 'owner_cedula', label: 'Cédula del propietario', placeholder: 'Ej: 10000000' },
 ];
 
 export default function CreateBrandModal({ onClose, onSuccess }: Props) {
-	const [form, setForm] = useState<FormState>({
-		full_name: '',
-		email: '',
-		phone_number: '',
-		brand_name: '',
-		owner_cedula: '',
-	});
+	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-	const [loading, setLoading] = useState(false);
-	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [serverError, setServerError] = useState<string | null>(null);
 
-	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		setForm({ ...form, [e.target.name]: e.target.value });
+	const {
+		register,
+		handleSubmit,
+		formState: { errors, isSubmitting, isValid },
+		reset,
+	} = useForm<FormValues>({
+		resolver: zodResolver(schema),
+		mode: 'onChange',
+		defaultValues: {
+			brand_name: '',
+			full_name: '',
+			email: '',
+			phone_number: '',
+			owner_cedula: '',
+		},
+	});
+
+	const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0] ?? null;
+		setSelectedFile(file);
+		setPreviewUrl(file ? URL.createObjectURL(file) : null);
 	};
 
-	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (file) {
-			setSelectedFile(file);
-			setPreviewUrl(URL.createObjectURL(file));
-		}
-	};
+	const onSubmit = async (values: FormValues) => {
+		setServerError(null);
+		const fd = new FormData();
+		(Object.keys(values) as (keyof FormValues)[]).forEach((k) => fd.append(k, values[k]));
+		if (selectedFile) fd.append('logo', selectedFile);
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (loading) return;
-
-		setLoading(true);
 		try {
-			const formData = new FormData();
-			(Object.keys(form) as (keyof FormState)[]).forEach((key) => {
-				formData.append(key, form[key]);
-			});
-			if (selectedFile) formData.append('logo', selectedFile);
-
-			await createBrand(formData);
+			await createBrand(fd);
+			reset();
 			onSuccess?.();
 			onClose();
-		} catch (error) {
-			console.error('Error creating brand:', error);
-		} finally {
-			setLoading(false);
+		} catch (err) {
+			console.error(err);
+			setServerError('No pudimos crear la marca. Inténtalo nuevamente.');
 		}
 	};
 
 	return (
-		<div
-			className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex justify-center items-center p-4"
-			role="dialog"
-			aria-modal="true"
-		>
+		<div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex justify-center items-center p-4" role="dialog" aria-modal="true">
 			<div className="w-full max-w-md rounded-2xl bg-white shadow-xl ring-1 ring-black/5">
 				<div className="p-6">
 					<h2 className="text-xl font-semibold tracking-tight mb-2">Crear Nueva Marca</h2>
 
-					<form onSubmit={handleSubmit} className="space-y-5">
-						{/* Selector de logo */}
+					{serverError && (
+						<div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">{serverError}</div>
+					)}
+
+					<form onSubmit={handleSubmit(onSubmit)} className="space-y-5" aria-busy={isSubmitting}>
+						{/* Logo */}
 						<div className="flex flex-col items-center gap-3">
 							{previewUrl ? (
 								<img src={previewUrl} alt="Vista previa del logo" className="w-24 h-24 object-contain rounded-md" />
 							) : (
-								<div className="w-24 h-24 rounded-md bg-gray-100 grid place-items-center text-xs text-gray-500">
-									Sin logo
-								</div>
+								<div className="w-24 h-24 rounded-md bg-gray-100 grid place-items-center text-xs text-gray-500">Sin logo</div>
 							)}
-
 							<div className="text-center">
 								<button
 									type="button"
 									onClick={() => fileInputRef.current?.click()}
-									className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-									disabled={loading}
+									className="text-blue-600 hover:text-blue-700 text-sm font-medium disabled:opacity-50"
+									disabled={isSubmitting}
 								>
 									{previewUrl ? 'Cambiar imagen' : 'Seleccionar imagen'}
 								</button>
-								<input
-									ref={fileInputRef}
-									type="file"
-									accept="image/*"
-									onChange={handleFileChange}
-									className="hidden"
-								/>
+								<input ref={fileInputRef} type="file" accept="image/*" onChange={onFileChange} className="hidden" disabled={isSubmitting} />
 							</div>
 						</div>
 
 						{/* Campos */}
 						<div className="space-y-4">
-							{FIELDS.map(({ name, label, type = 'text', autoComplete, placeholder }) => (
-								<div key={name} className="grid gap-1.5">
-									<label htmlFor={name} className="text-sm font-medium text-gray-700">
-										{label}
-									</label>
-									<input
-										id={name}
-										name={name}
-										type={type}
-										value={form[name]}
-										onChange={handleChange}
-										placeholder={placeholder}
-										autoComplete={autoComplete}
-										required={['brand_name', 'full_name', 'email'].includes(name)}
-										className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-									/>
-								</div>
-							))}
+							{FIELDS.map(({ name, label, type = 'text', autoComplete, placeholder }) => {
+								const error = errors[name]?.message as string | undefined;
+								return (
+									<div key={name} className="grid gap-1.5">
+										<label htmlFor={name} className="text-sm font-medium text-gray-700">
+											{label}
+										</label>
+										<input
+											id={name}
+											type={type}
+											autoComplete={autoComplete}
+											placeholder={placeholder}
+											{...register(name)}
+											aria-invalid={!!error}
+											className={`w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 ${
+												error ? 'border-red-400 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+											}`}
+											disabled={isSubmitting}
+										/>
+										{error && <span className="text-xs text-red-600">{error}</span>}
+									</div>
+								);
+							})}
 						</div>
 
 						{/* Acciones */}
 						<div className="flex justify-end gap-2 pt-2">
-							<button
-								type="button"
-								onClick={onClose}
-								className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800"
-								disabled={loading}
-							>
+							<button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800" disabled={isSubmitting}>
 								Cancelar
 							</button>
 							<button
 								type="submit"
-								className="px-4 py-2 text-sm font-semibold rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
-								disabled={loading}
+								className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
+								disabled={!isValid || isSubmitting}
 							>
-								{loading ? 'Creando…' : 'Crear'}
+								{isSubmitting && (
+									<svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" aria-hidden="true">
+										<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+										<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+									</svg>
+								)}
+								{isSubmitting ? 'Creando…' : 'Crear'}
 							</button>
 						</div>
 					</form>
