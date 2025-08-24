@@ -31,9 +31,6 @@ jobs:
     - name: Build frontend
       run: npx next build
 
-    - name: Export static site
-      run: npx next export
-
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
       with:
