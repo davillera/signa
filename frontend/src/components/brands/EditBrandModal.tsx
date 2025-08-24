@@ -16,15 +16,31 @@ type Brand = {
 	id: string;
 };
 
-// Esquema compartido con Create
+// Validación con zod
 const schema = z.object({
 	brand_name: z.string().trim().min(2, 'Ingresa el nombre de la marca'),
 	full_name: z.string().trim().min(2, 'Ingresa el nombre del dueño'),
 	email: z.string().trim().email('Correo no válido'),
-	phone_number: z.string().trim().regex(/^\+?\d{7,10}$/, 'Teléfono no válido (7–10 dígitos, opcional +)'),
+	phone_number: z.string().trim().regex(/^\+?\d{7,15}$/, 'Teléfono no válido (7–15 dígitos, opcional +)'),
 	owner_cedula: z.string().trim().regex(/^\d{6,15}$/, 'Cédula no válida (solo dígitos)'),
 });
 type FormValues = z.infer<typeof schema>;
+
+// Definimos un tipo común con `type` opcional
+type Field = {
+	name: keyof FormValues;
+	label: string;
+	placeholder?: string;
+	type?: 'text' | 'email' | 'tel';
+};
+
+const FIELDS: Field[] = [
+	{ name: 'brand_name', label: 'Nombre de la marca', placeholder: 'Ej: ACME', type: 'text' },
+	{ name: 'full_name', label: 'Nombre del dueño', placeholder: 'Ej: Daniel Andrés', type: 'text' },
+	{ name: 'email', label: 'Correo electrónico', placeholder: 'correo@dominio.com', type: 'email' },
+	{ name: 'phone_number', label: 'Número de teléfono', placeholder: 'Ej: +573000000000', type: 'tel' },
+	{ name: 'owner_cedula', label: 'Cédula del propietario', placeholder: 'Ej: 10000000', type: 'text' },
+];
 
 export default function EditBrandModal({
 																				 brand,
@@ -112,16 +128,9 @@ export default function EditBrandModal({
 
 						{/* Campos */}
 						<div className="space-y-4">
-							{(
-								[
-									{ name: 'brand_name', label: 'Nombre de la marca', placeholder: 'Ej: ACME' },
-									{ name: 'full_name', label: 'Nombre del dueño', placeholder: 'Ej: Daniel Andrés' },
-									{ name: 'email', label: 'Correo electrónico', type: 'email', placeholder: 'correo@dominio.com' },
-									{ name: 'phone_number', label: 'Número de teléfono', type: 'tel', placeholder: 'Ej: +573000000000' },
-									{ name: 'owner_cedula', label: 'Cédula del propietario', placeholder: 'Ej: 10000000' },
-								] as const
-							).map(({ name, label, type = 'text', placeholder }) => {
+							{FIELDS.map(({ name, label, placeholder, type }) => {
 								const error = errors[name]?.message as string | undefined;
+								const inputType = type ?? 'text';
 								return (
 									<div key={name} className="grid gap-1.5">
 										<label htmlFor={name} className="text-sm font-medium text-gray-700">
@@ -129,7 +138,7 @@ export default function EditBrandModal({
 										</label>
 										<input
 											id={name}
-											type={type}
+											type={inputType}
 											placeholder={placeholder}
 											{...register(name)}
 											aria-invalid={!!error}
