@@ -20,39 +20,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-        with:
-          submodules: true
-          lfs: false
 
-      - name: Install OIDC Client from Core Package
-        run: npm install @actions/core@1.6.0 @actions/http-client
-
-      - name: Get Id Token
-        uses: actions/github-script@v6
-        id: idtoken
-        with:
-          script: |
-            const coredemo = require('@actions/core')
-            return await coredemo.getIDToken()
-          result-encoding: string
-
-      - name: Build And Deploy
-        id: builddeploy
+      - name: Build and Deploy
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GENTLE_GRASS_028C7900F }}
           action: "upload"
-          app_location: "./frontend"      # ruta del código
-          api_location: ""                # opcional
-          output_location: ".next"        # artefactos de Next.js
-          github_id_token: ${{ steps.idtoken.outputs.result }}
-          # Forzamos a Oryx a usar pnpm con Corepack y a instalar de forma reproducible
+          app_location: "./frontend"
+          output_location: ".next"
           app_build_command: |
             node -v
             corepack enable
             corepack prepare pnpm@8.15.8 --activate
             pnpm --version
-            pnpm install --frozen-lockfile --prefer-offline
+            pnpm install --prefer-offline
             pnpm build -- --turbopack
         env:
           NEXT_TELEMETRY_DISABLED: "1"
@@ -63,7 +44,6 @@ jobs:
     name: Close Pull Request Job
     steps:
       - name: Close Pull Request
-        id: closepullrequest
         uses: Azure/static-web-apps-deploy@v1
         with:
           action: "close"
