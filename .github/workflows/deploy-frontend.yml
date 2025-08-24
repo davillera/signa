@@ -28,8 +28,8 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Build frontend (skip linting and type errors)
-      run: npx next build --no-lint --no-typescript
+    - name: Build frontend
+      run: npx next build
 
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
